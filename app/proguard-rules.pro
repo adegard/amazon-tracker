@@ -1,0 +1,3 @@
+-keepattributes *Annotation*
+-keep class com.amazontracker.data.** { *; }
+-dontwarn org.jsoup.**

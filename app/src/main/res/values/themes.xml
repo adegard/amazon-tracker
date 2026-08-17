@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <style name="Theme.AmazonTracker" parent="Theme.MaterialComponents.Light.NoActionBar">
+        <item name="colorPrimary">#FF9900</item>
+        <item name="colorPrimaryDark">#E68A00</item>
+        <item name="colorAccent">#FF9900</item>
+        <item name="android:windowBackground">@color/background</item>
+        <item name="android:statusBarColor">#232F3E</item>
+    </style>
+
+    <style name="AlertDialogCustom" parent="ThemeOverlay.MaterialComponents.MaterialAlertDialog">
+        <item name="colorPrimary">#FF9900</item>
+    </style>
+</resources>

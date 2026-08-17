@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="amazon_orange">#FF9900</color>
+    <color name="amazon_dark">#232F3E</color>
+    <color name="white">#FFFFFF</color>
+    <color name="black">#000000</color>
+    <color name="text_primary">#212121</color>
+    <color name="text_secondary">#757575</color>
+    <color name="price_up">#F44336</color>
+    <color name="price_down">#4CAF50</color>
+    <color name="background">#F5F5F5</color>
+</resources>
