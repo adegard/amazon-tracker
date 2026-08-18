@@ -1,4 +1,4 @@
-# Amazon Price Tracker - WORK IN PROGRESS-
+# Amazon Price Tracker 
 
 Android app that wraps Amazon's website with extra features.
 
