@@ -89,6 +89,10 @@ class MainActivity : AppCompatActivity() {
         requestNotificationPermission()
 
         when {
+            intent?.hasExtra("load_url") == true -> {
+                val url = intent.getStringExtra("load_url") ?: ""
+                if (url.isNotEmpty()) webView.loadUrl(url)
+            }
             intent?.action == Intent.ACTION_VIEW -> {
                 intent.data?.let { uri -> webView.loadUrl(uri.toString()) }
             }

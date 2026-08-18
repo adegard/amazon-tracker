@@ -133,6 +133,7 @@ class TrackedProductsActivity : AppCompatActivity() {
             val priceText: TextView = view.findViewById(R.id.productPriceText)
             val rangeText: TextView = view.findViewById(R.id.priceRangeText)
             val lastCheckedText: TextView = view.findViewById(R.id.lastCheckedText)
+            val visitButton: ImageButton = view.findViewById(R.id.visitButton)
             val deleteButton: ImageButton = view.findViewById(R.id.deleteButton)
         }
 
@@ -160,6 +161,16 @@ class TrackedProductsActivity : AppCompatActivity() {
                 startActivity(Intent(this@TrackedProductsActivity, PriceHistoryActivity::class.java).apply {
                     putExtra("product_id", product.id)
                 })
+            }
+
+            holder.visitButton.setOnClickListener {
+                if (product.url.isNotBlank()) {
+                    startActivity(Intent(this@TrackedProductsActivity, MainActivity::class.java).apply {
+                        putExtra("load_url", product.url)
+                    })
+                } else {
+                    Toast.makeText(this@TrackedProductsActivity, "No URL saved", Toast.LENGTH_SHORT).show()
+                }
             }
 
             holder.deleteButton.setOnClickListener {
