@@ -167,6 +167,7 @@ class TrackedProductsActivity : AppCompatActivity() {
                 if (product.url.isNotBlank()) {
                     startActivity(Intent(this@TrackedProductsActivity, MainActivity::class.java).apply {
                         putExtra("load_url", product.url)
+                        flags = Intent.FLAG_ACTIVITY_CLEAR_TOP
                     })
                 } else {
                     Toast.makeText(this@TrackedProductsActivity, "No URL saved", Toast.LENGTH_SHORT).show()

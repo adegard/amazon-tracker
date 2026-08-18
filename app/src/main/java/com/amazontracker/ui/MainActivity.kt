@@ -666,6 +666,13 @@ class MainActivity : AppCompatActivity() {
     }
 
     @Suppress("DEPRECATION")
+    override fun onNewIntent(intent: Intent?) {
+        super.onNewIntent(intent)
+        intent?.getStringExtra("load_url")?.let { url ->
+            if (url.isNotEmpty()) webView.loadUrl(url)
+        }
+    }
+
     override fun onBackPressed() {
         if (webView.canGoBack()) webView.goBack()
         else super.onBackPressed()
