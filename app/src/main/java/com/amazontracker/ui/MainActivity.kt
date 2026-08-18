@@ -344,16 +344,20 @@ class MainActivity : AppCompatActivity() {
                 var dealInfo = '';
 
                 var nameEl = document.querySelector('#productTitle');
-                if (!nameEl) nameEl = document.querySelector('#title span');
-                if (!nameEl) nameEl = document.querySelector('h1.a-size-large');
-                if (!nameEl) nameEl = document.querySelector('span.product-title-word-break');
-                if (!nameEl) nameEl = document.querySelector('[data-feature-name="title"] span');
-                if (nameEl) name = nameEl.textContent.trim();
+                if (!nameEl || !nameEl.textContent.trim()) nameEl = document.querySelector('#title');
+                if (!nameEl || !nameEl.textContent.trim()) nameEl = document.querySelector('#title span');
+                if (!nameEl || !nameEl.textContent.trim()) nameEl = document.querySelector('h1.a-size-large');
+                if (!nameEl || !nameEl.textContent.trim()) nameEl = document.querySelector('span.product-title-word-break');
+                if (!nameEl || !nameEl.textContent.trim()) nameEl = document.querySelector('[data-feature-name="title"] span');
+                if (!nameEl || !nameEl.textContent.trim()) nameEl = document.querySelector('#tp_title_div');
+                if (!nameEl || !nameEl.textContent.trim()) nameEl = document.querySelector('#bylineInfo');
+                if (!nameEl || !nameEl.textContent.trim()) nameEl = document.querySelector('span#productTitle');
+                if (nameEl) name = nameEl.textContent.trim().replace(/^[\s\S]*?:\s*/, '');
                 if (!name) {
-                    var metas = document.querySelectorAll('meta[name="title"], meta[property="og:title"]');
+                    var metas = document.querySelectorAll('meta[property="og:title"], meta[name="twitter:title"]');
                     for (var m = 0; m < metas.length; m++) {
                         var v = metas[m].getAttribute('content');
-                        if (v && v.trim()) { name = v.trim().split('|')[0].trim(); break; }
+                        if (v && v.trim() && v.trim().length > 3) { name = v.trim().split('|')[0].trim().split(' - ')[0].trim(); break; }
                     }
                 }
                 if (!name) {
@@ -361,6 +365,13 @@ class MainActivity : AppCompatActivity() {
                     for (var h = 0; h < h1s.length; h++) {
                         var ht = h1s[h].textContent.trim();
                         if (ht.length > 5 && ht.length < 300) { name = ht; break; }
+                    }
+                }
+                if (!name) {
+                    var titleTag = document.querySelector('title');
+                    if (titleTag) {
+                        var tt = titleTag.textContent.trim().split('|')[0].split('-')[0].trim();
+                        if (tt.length > 3 && tt.length < 200) name = tt;
                     }
                 }
 
@@ -456,19 +467,22 @@ class MainActivity : AppCompatActivity() {
                 }
 
                 var lowestPrice30d = 0;
-                var allEls = document.querySelectorAll('*');
-                for (var e = 0; e < allEls.length && e < 5000; e++) {
-                    var txt = allEls[e].textContent || '';
-                    if (txt.length < 200 && txt.length > 3) {
-                        if (/prezzo\s+(pi[ùu]\s+basso|mediano)/i.test(txt) ||
-                            /lowest\s+price/i.test(txt) || /median/i.test(txt)) {
-                            var nums = txt.match(/\d+[,\.]\d{2}/g);
-                            if (nums && nums.length > 0) {
-                                var val = nums[nums.length - 1].replace(',', '.');
-                                var parsed = parseFloat(val);
-                                if (parsed > 0) {
-                                    if (/pi[ùu]\s+basso|lowest/i.test(txt)) lowestPrice30d = parsed;
-                                    else if (listPrice <= 0) listPrice = parsed;
+                var priceContainers = document.querySelectorAll('#corePrice_feature_div, #corePrice_desktop, #price, #apex_offerDisplay_desktop, .priceBlockSpotPrice');
+                for (var pc = 0; pc < priceContainers.length; pc++) {
+                    var children = priceContainers[pc].querySelectorAll('*');
+                    for (var e = 0; e < children.length; e++) {
+                        var txt = children[e].textContent || '';
+                        if (txt.length < 150 && txt.length > 3) {
+                            if (/prezzo\s+(pi[ùu]\s+basso|mediano)/i.test(txt) ||
+                                /lowest\s+price/i.test(txt) || /median/i.test(txt)) {
+                                var nums = txt.match(/\d+[,\.]\d{2}/g);
+                                if (nums && nums.length > 0) {
+                                    var val = nums[nums.length - 1].replace(',', '.');
+                                    var parsed = parseFloat(val);
+                                    if (parsed > 0) {
+                                        if (/pi[ùu]\s+basso|lowest/i.test(txt)) lowestPrice30d = parsed;
+                                        else if (listPrice <= 0) listPrice = parsed;
+                                    }
                                 }
                             }
                         }
