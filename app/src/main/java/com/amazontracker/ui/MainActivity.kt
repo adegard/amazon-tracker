@@ -405,19 +405,15 @@ class MainActivity : AppCompatActivity() {
 
                 var priceText = '';
                 var selectors = [
-                    '#corePrice_feature_div .a-price .a-offscreen',
+                    '#corePrice_feature_div .priceToPay .a-offscreen',
+                    '#corePrice_feature_div .apexPriceToPay .a-offscreen',
+                    '#corePrice_feature_div .a-price:not(.a-text-price) .a-offscreen',
                     '.priceToPay .a-offscreen',
                     '#apex_offerDisplay_desktop .a-offscreen',
-                    '.a-price .a-offscreen',
-                    '#priceblock_ourprice',
-                    '#priceblock_dealprice',
-                    '#price_inside_buybox',
-                    '#newBuyBoxPrice',
                     '#tp_price_block_total_price_ww .a-offscreen',
                     '.apexPriceToPay .a-offscreen',
-                    '#corePrice_desktop .a-price .a-offscreen',
-                    '#price .a-color-price',
-                    '#buybox .a-price .a-offscreen'
+                    '#buybox .priceToPay .a-offscreen',
+                    '#buybox .a-price:not(.a-text-price) .a-offscreen'
                 ];
                 for (var i = 0; i < selectors.length; i++) {
                     var el = document.querySelector(selectors[i]);
@@ -427,16 +423,26 @@ class MainActivity : AppCompatActivity() {
                     }
                 }
                 if (!priceText) {
-                    var allPrices = document.querySelectorAll('[data-a-color="price"] .a-offscreen, .a-price.aok-hidden ~ .a-offscreen');
-                    for (var j = 0; j < allPrices.length; j++) {
-                        if (allPrices[j].textContent.trim()) {
-                            priceText = allPrices[j].textContent.trim();
+                    var allNonStrike = document.querySelectorAll('.a-price:not(.a-text-price) .a-offscreen');
+                    for (var j = 0; j < allNonStrike.length; j++) {
+                        var t = allNonStrike[j].textContent.trim();
+                        if (t && /[\$\u20ac\u00a3\u00a5]/.test(t)) {
+                            priceText = t;
                             break;
                         }
                     }
                 }
                 if (!priceText) {
-                    var spans = document.querySelectorAll('span.a-offscreen');
+                    var allPrices = document.querySelectorAll('[data-a-color="price"] .a-offscreen');
+                    for (var k = 0; k < allPrices.length; k++) {
+                        if (allPrices[k].textContent.trim()) {
+                            priceText = allPrices[k].textContent.trim();
+                            break;
+                        }
+                    }
+                }
+                if (!priceText) {
+                    var spans = document.querySelectorAll('#corePrice_feature_div span.a-offscreen, #price span.a-offscreen, #buybox span.a-offscreen');
                     for (var k = 0; k < spans.length; k++) {
                         var t = spans[k].textContent.trim();
                         if (t && /[\$\u20ac\u00a3\u00a5]/.test(t) || /\d+[,\.]\d{2}/.test(t)) {
