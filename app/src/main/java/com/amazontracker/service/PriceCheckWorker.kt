@@ -1,6 +1,7 @@
 package com.amazontracker.service
 
 import android.content.Context
+import android.util.Log
 import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
 import com.amazontracker.data.AppDatabase
@@ -30,6 +31,8 @@ class PriceCheckWorker(
                 .header("User-Agent", "Mozilla/5.0 (Linux; Android 14; Pixel 8 Pro) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Mobile Safari/537.36")
                 .header("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8")
                 .header("Accept-Language", "it-IT,it;q=0.9,en-US;q=0.8,en;q=0.7")
+                .header("Accept-Encoding", "gzip, deflate")
+                .header("Cache-Control", "no-cache")
                 .build()
             chain.proceed(request)
         }
@@ -40,9 +43,9 @@ class PriceCheckWorker(
             val db = AppDatabase.getInstance(applicationContext)
             val products = db.trackedProductDao().getAll().first()
 
-            for ((index, product) in products.withIndex()) {
+            for ((_, product) in products.withIndex()) {
                 try {
-                    checkProductPrice(product, db, index)
+                    checkProductPrice(product, db)
                 } catch (_: Exception) {}
             }
             Result.success()
@@ -53,8 +56,7 @@ class PriceCheckWorker(
 
     private suspend fun checkProductPrice(
         product: com.amazontracker.data.TrackedProduct,
-        db: AppDatabase,
-        notificationIndex: Int
+        db: AppDatabase
     ) {
         val request = Request.Builder().url(product.url).build()
         val response = client.newCall(request).execute()
@@ -65,16 +67,28 @@ class PriceCheckWorker(
         val newPrice = parsed.price
         if (newPrice <= 0) return
 
+        if (oldPrice > 0) {
+            val ratio = newPrice / oldPrice
+            if (ratio > 2.0 || ratio < 0.3) return
+        }
+
         db.priceHistoryDao().insert(
             PriceEntry(productId = product.id, price = newPrice, currency = parsed.currency)
         )
+
+        val updatedName = when {
+            product.name == "Unknown Product" && parsed.productName.isNotEmpty() -> parsed.productName
+            parsed.productName.isNotEmpty() && parsed.productName != "Unknown Product" &&
+                parsed.productName.length > product.name.length -> parsed.productName
+            else -> product.name
+        }
 
         val updatedProduct = product.copy(
             currentPrice = newPrice,
             lowestPrice = if (product.lowestPrice == 0.0 || newPrice < product.lowestPrice) newPrice else product.lowestPrice,
             highestPrice = if (newPrice > product.highestPrice) newPrice else product.highestPrice,
             lastChecked = System.currentTimeMillis(),
-            name = if (parsed.productName.isNotEmpty()) parsed.productName else product.name
+            name = updatedName
         )
         db.trackedProductDao().update(updatedProduct)
 
@@ -85,7 +99,7 @@ class PriceCheckWorker(
                 NotificationHelper.showPriceDropNotification(
                     applicationContext,
                     (product.id * 100 + 1).toInt(),
-                    product.name,
+                    updatedName,
                     oldPrice,
                     newPrice,
                     percentChange,
@@ -104,33 +118,13 @@ class PriceCheckWorker(
                     NotificationHelper.showPriceAlert(
                         applicationContext,
                         (product.id * 100 + 2).toInt(),
-                        product.name,
+                        updatedName,
                         newPrice,
                         alert.targetPrice,
                         alert.isAbove,
                         parsed.currency
                     )
                     db.priceAlertDao().update(alert.copy(isActive = false))
-                }
-            }
-
-            val autoAlerts = db.priceAlertDao().getAlertsForProduct(product.id).first()
-            val hasAutoAlert = autoAlerts.any { it.targetPrice == 0.0 && !it.isAbove }
-            if (!hasAutoAlert && oldPrice > 0) {
-                val autoTarget = oldPrice * 0.95
-                if (newPrice <= autoTarget) {
-                    db.priceAlertDao().insert(
-                        PriceAlert(productId = product.id, targetPrice = autoTarget, isAbove = false)
-                    )
-                    NotificationHelper.showPriceDropNotification(
-                        applicationContext,
-                        (product.id * 100 + 3).toInt(),
-                        product.name,
-                        oldPrice,
-                        newPrice,
-                        percentChange,
-                        parsed.currency
-                    )
                 }
             }
         }

@@ -53,6 +53,7 @@ class MainActivity : AppCompatActivity() {
     companion object {
         const val PREFS_NAME = "amazon_tracker_prefs"
         const val KEY_REGION = "region"
+        const val KEY_LAST_URL = "last_url"
         val REGIONS = linkedMapOf(
             "it" to Region("it", "Amazon.it", "https://www.amazon.it", "amazon.it"),
             "com" to Region("com", "Amazon.com (US)", "https://www.amazon.com", "amazon.com"),
@@ -97,13 +98,19 @@ class MainActivity : AppCompatActivity() {
                 intent.data?.let { uri -> webView.loadUrl(uri.toString()) }
             }
             else -> {
-                val savedRegion = prefs.getString(KEY_REGION, null)
-                val region = if (savedRegion != null && REGIONS.containsKey(savedRegion)) {
-                    REGIONS[savedRegion]!!
+                val lastUrl = prefs.getString(KEY_LAST_URL, null)
+                if (lastUrl != null && lastUrl.contains("amazon.") && PriceParser.isProductPage(lastUrl)) {
+                    webView.loadUrl(lastUrl)
                 } else {
-                    detectRegion()
+                    val savedRegion = prefs.getString(KEY_REGION, null)
+                    val region = if (savedRegion != null && REGIONS.containsKey(savedRegion)) {
+                        REGIONS[savedRegion]!!
+                    } else {
+                        detectRegion()
+                    }
+                    val resumeUrl = if (lastUrl != null && lastUrl.contains("amazon.")) lastUrl else region.url
+                    webView.loadUrl(resumeUrl)
                 }
-                webView.loadUrl(region.url)
             }
         }
     }
@@ -182,9 +189,29 @@ class MainActivity : AppCompatActivity() {
                 view?.evaluateJavascript(TrackerBlocker.getAppBannerRemovalJS(), null)
                 url?.let { checkForTriggeredAlerts(it) }
                 autoSetRegionFromUrl(url)
+                if (url != null && !url.contains("amazon.") && !url.startsWith("about:")) {
+                    // not amazon, skip
+                } else if (url != null) {
+                    prefs.edit().putString(KEY_LAST_URL, url).apply()
+                }
                 if (url != null && PriceParser.isProductPage(url)) {
                     extractProductFromWebView { name, price, currency, image, listPrice, dealInfo, lowestPrice30d ->
                         runOnUiThread { updateDealInfoBar(name, price, currency, listPrice, dealInfo, lowestPrice30d) }
+                        if (name != null && name != "Unknown Product" && name.length > 3) {
+                            lifecycleScope.launch {
+                                val asin = PriceParser.extractAsin(url)
+                                if (asin != null) {
+                                    val product = withContext(Dispatchers.IO) {
+                                        database.trackedProductDao().getByAsin(asin)
+                                    }
+                                    if (product != null && (product.name == "Unknown Product" || product.name.length < name.length)) {
+                                        withContext(Dispatchers.IO) {
+                                            database.trackedProductDao().update(product.copy(name = name))
+                                        }
+                                    }
+                                }
+                            }
+                        }
                     }
                 } else {
                     runOnUiThread { dealInfoBar.visibility = View.GONE }
@@ -236,23 +263,24 @@ class MainActivity : AppCompatActivity() {
                 database.trackedProductDao().getByAsin(asin)
             } ?: return@launch
 
-            val history = withContext(Dispatchers.IO) {
-                database.priceHistoryDao().getHistoryList(product.id)
+            val alerts = withContext(Dispatchers.IO) {
+                database.priceAlertDao().getAlertsForProduct(product.id).first()
             }
-            if (history.isNotEmpty()) {
-                val latest = history.last()
-                val alerts = withContext(Dispatchers.IO) {
-                    database.priceAlertDao().getAlertsForProduct(product.id).first()
-                }
-                for (alert in alerts) {
-                    if (!alert.isActive) continue
-                    val triggered = when {
-                        alert.isAbove -> latest.price >= alert.targetPrice
-                        else -> latest.price <= alert.targetPrice
-                    }
-                    if (triggered) {
-                        showPriceAlertDialog(product.name, latest.price, alert.targetPrice, alert.isAbove)
-                        break
+            val activeAlerts = alerts.filter { it.isActive }
+            if (activeAlerts.isEmpty()) return@launch
+
+            extractProductFromWebView { name, price, currency, image, listPrice, dealInfo, lowestPrice30d ->
+                if (price <= 0) return@extractProductFromWebView
+                runOnUiThread {
+                    for (alert in activeAlerts) {
+                        val triggered = when {
+                            alert.isAbove -> price >= alert.targetPrice
+                            else -> price <= alert.targetPrice
+                        }
+                        if (triggered) {
+                            showPriceAlertDialog(product.name, price, alert.targetPrice, alert.isAbove)
+                            break
+                        }
                     }
                 }
             }
@@ -435,25 +463,29 @@ class MainActivity : AppCompatActivity() {
                     else currency = 'USD';
                 }
 
-                var listPriceEl = document.querySelector('.a-price.a-text-price .a-offscreen')
-                               || document.querySelector('#listPrice')
-                               || document.querySelector('#priceblock_listprice')
-                               || document.querySelector('.basisPrice .a-offscreen')
-                               || document.querySelector('.a-text-strike')
-                               || document.querySelector('#priceblock_ourprice + .a-text-strike');
+                var listPriceEl = null;
+                var basisEl = document.querySelector('.basisPrice .a-offscreen')
+                           || document.querySelector('#listPrice')
+                           || document.querySelector('#priceblock_listprice')
+                           || document.querySelector('#priceblock_ourprice + .a-text-strike');
+                if (basisEl) listPriceEl = basisEl;
+                if (!listPriceEl) {
+                    var strikeEl = document.querySelector('.a-text-price.a-text-strike .a-offscreen')
+                                || document.querySelector('span.a-price.a-text-strike .a-offscreen');
+                    if (strikeEl) listPriceEl = strikeEl;
+                }
                 if (!listPriceEl) {
                     var cpDiv = document.querySelector('#corePrice_feature_div') || document.querySelector('#corePrice_desktop');
                     if (cpDiv) {
                         var tp = cpDiv.querySelectorAll('.a-text-price .a-offscreen');
-                        if (tp.length > 0) listPriceEl = tp[0];
-                    }
-                }
-                if (!listPriceEl) {
-                    var allTextPrices = document.querySelectorAll('.a-text-price .a-offscreen');
-                    for (var lp = 0; lp < allTextPrices.length; lp++) {
-                        var lpt = allTextPrices[lp].textContent.trim();
-                        var lpc = lpt.replace(/[^\d,\.]/g, '').replace(',', '.');
-                        if (parseFloat(lpc) > 0) { listPriceEl = allTextPrices[lp]; break; }
+                        for (var tpi = 0; tpi < tp.length; tpi++) {
+                            var parentEl = tp[tpi].closest('.a-text-price');
+                            if (parentEl && (parentEl.classList.contains('a-text-strike') || parentEl.closest('.basisPrice'))) {
+                                listPriceEl = tp[tpi];
+                                break;
+                            }
+                        }
+                        if (!listPriceEl && tp.length > 0) listPriceEl = tp[0];
                     }
                 }
                 if (listPriceEl) {
@@ -464,6 +496,7 @@ class MainActivity : AppCompatActivity() {
                     }
                     lpCleaned = lpCleaned.replace(',', '.');
                     listPrice = parseFloat(lpCleaned) || 0;
+                    if (price > 0 && listPrice <= price) listPrice = 0;
                 }
 
                 var lowestPrice30d = 0;
@@ -479,7 +512,7 @@ class MainActivity : AppCompatActivity() {
                                 if (nums && nums.length > 0) {
                                     var val = nums[nums.length - 1].replace(',', '.');
                                     var parsed = parseFloat(val);
-                                    if (parsed > 0) {
+                                    if (parsed > 0 && price > 0 && parsed < price * 3 && parsed > price * 0.1) {
                                         if (/pi[ùu]\s+basso|lowest/i.test(txt)) lowestPrice30d = parsed;
                                         else if (listPrice <= 0) listPrice = parsed;
                                     }
@@ -488,6 +521,7 @@ class MainActivity : AppCompatActivity() {
                         }
                     }
                 }
+                if (price > 0 && listPrice > 0 && listPrice < price) listPrice = 0;
                 if (lowestPrice30d <= 0) {
                     var savingsPct = document.querySelector('.savingsPercentage');
                     if (savingsPct && listPrice > 0 && price > 0) {
