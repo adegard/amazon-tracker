@@ -404,50 +404,33 @@ class MainActivity : AppCompatActivity() {
                 }
 
                 var priceText = '';
-                var selectors = [
-                    '#corePrice_feature_div .priceToPay .a-offscreen',
-                    '#corePrice_feature_div .apexPriceToPay .a-offscreen',
-                    '#corePrice_feature_div .a-price:not(.a-text-price) .a-offscreen',
-                    '.priceToPay .a-offscreen',
-                    '#apex_offerDisplay_desktop .a-offscreen',
-                    '#tp_price_block_total_price_ww .a-offscreen',
-                    '.apexPriceToPay .a-offscreen',
-                    '#buybox .priceToPay .a-offscreen',
-                    '#buybox .a-price:not(.a-text-price) .a-offscreen'
+                var priceContainers = [
+                    '#corePrice_feature_div',
+                    '#apex_desktop',
+                    '#apex_offerDisplay_desktop',
+                    '#buybox',
+                    '#price',
+                    '#tp_price_block_total_price_ww'
                 ];
-                for (var i = 0; i < selectors.length; i++) {
-                    var el = document.querySelector(selectors[i]);
-                    if (el && el.textContent.trim()) {
-                        priceText = el.textContent.trim();
-                        break;
-                    }
-                }
-                if (!priceText) {
-                    var allNonStrike = document.querySelectorAll('.a-price:not(.a-text-price) .a-offscreen');
-                    for (var j = 0; j < allNonStrike.length; j++) {
-                        var t = allNonStrike[j].textContent.trim();
+                for (var ci = 0; ci < priceContainers.length && !priceText; ci++) {
+                    var container = document.querySelector(priceContainers[ci]);
+                    if (!container) continue;
+                    var inner = container.querySelectorAll('.priceToPay .a-offscreen, .apexPriceToPay .a-offscreen, .a-price:not(.a-text-price) .a-offscreen');
+                    for (var j = 0; j < inner.length; j++) {
+                        var t = inner[j].textContent.trim();
                         if (t && /[\$\u20ac\u00a3\u00a5]/.test(t)) {
                             priceText = t;
                             break;
                         }
                     }
-                }
-                if (!priceText) {
-                    var allPrices = document.querySelectorAll('[data-a-color="price"] .a-offscreen');
-                    for (var k = 0; k < allPrices.length; k++) {
-                        if (allPrices[k].textContent.trim()) {
-                            priceText = allPrices[k].textContent.trim();
-                            break;
-                        }
-                    }
-                }
-                if (!priceText) {
-                    var spans = document.querySelectorAll('#corePrice_feature_div span.a-offscreen, #price span.a-offscreen, #buybox span.a-offscreen');
-                    for (var k = 0; k < spans.length; k++) {
-                        var t = spans[k].textContent.trim();
-                        if (t && /[\$\u20ac\u00a3\u00a5]/.test(t) || /\d+[,\.]\d{2}/.test(t)) {
-                            priceText = t;
-                            break;
+                    if (!priceText) {
+                        var spans2 = container.querySelectorAll('span.a-offscreen');
+                        for (var k = 0; k < spans2.length; k++) {
+                            var t2 = spans2[k].textContent.trim();
+                            if (t2 && /[\$\u20ac\u00a3\u00a5]/.test(t2) && /\d/.test(t2)) {
+                                priceText = t2;
+                                break;
+                            }
                         }
                     }
                 }
