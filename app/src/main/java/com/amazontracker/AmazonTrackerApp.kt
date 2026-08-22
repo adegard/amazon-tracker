@@ -17,13 +17,17 @@ class AmazonTrackerApp : Application() {
         schedulePriceChecks()
     }
 
-    private fun schedulePriceChecks() {
+    fun schedulePriceChecks() {
+        val prefs = getSharedPreferences("amazon_tracker_prefs", MODE_PRIVATE)
+        val intervalHours = prefs.getInt("check_interval_hours", 6)
+
         val constraints = Constraints.Builder()
             .setRequiredNetworkType(NetworkType.CONNECTED)
+            .setRequiresBatteryNotLow(true)
             .build()
 
         val workRequest = PeriodicWorkRequestBuilder<PriceCheckWorker>(
-            1, TimeUnit.HOURS, 15, TimeUnit.MINUTES
+            intervalHours.toLong(), TimeUnit.HOURS, 15, TimeUnit.MINUTES
         )
             .setConstraints(constraints)
             .setBackoffCriteria(BackoffPolicy.EXPONENTIAL, 15, TimeUnit.MINUTES)
@@ -31,7 +35,7 @@ class AmazonTrackerApp : Application() {
 
         WorkManager.getInstance(this).enqueueUniquePeriodicWork(
             "price_check",
-            ExistingPeriodicWorkPolicy.KEEP,
+            ExistingPeriodicWorkPolicy.UPDATE,
             workRequest
         )
     }

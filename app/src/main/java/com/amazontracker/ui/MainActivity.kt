@@ -22,6 +22,7 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.lifecycleScope
 import com.amazontracker.R
+import com.amazontracker.AmazonTrackerApp
 import com.amazontracker.data.AppDatabase
 import com.amazontracker.data.PriceAlert
 import com.amazontracker.data.PriceEntry
@@ -635,15 +636,35 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun showMoreOptions() {
-        val options = arrayOf("Switch Region", "Add URL")
+        val options = arrayOf("Switch Region", "Add URL", "Check Frequency")
         AlertDialog.Builder(this)
             .setTitle("Options")
             .setItems(options) { _, which ->
                 when (which) {
                     0 -> showRegionPicker()
                     1 -> showAddUrlDialog()
+                    2 -> showFrequencyPicker()
                 }
             }
+            .show()
+    }
+
+    private fun showFrequencyPicker() {
+        val labels = arrayOf("Every 1 hour", "Every 3 hours", "Every 6 hours", "Every 12 hours", "Once a day", "Off (manual only)")
+        val values = intArrayOf(1, 3, 6, 12, 24, 0)
+        val current = prefs.getInt("check_interval_hours", 6)
+        val currentIndex = values.indexOf(current).coerceAtLeast(0)
+
+        AlertDialog.Builder(this)
+            .setTitle("Price Check Frequency")
+            .setSingleChoiceItems(labels, currentIndex) { dialog, which ->
+                prefs.edit().putInt("check_interval_hours", values[which]).apply()
+                (application as AmazonTrackerApp).schedulePriceChecks()
+                val msg = if (values[which] == 0) "Background checks disabled" else "Checking every ${labels[which].removePrefix("Every ")}"
+                Toast.makeText(this, msg, Toast.LENGTH_SHORT).show()
+                dialog.dismiss()
+            }
+            .setNegativeButton("Cancel", null)
             .show()
     }
 
