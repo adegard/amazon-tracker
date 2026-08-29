@@ -1,8 +1,14 @@
 [![Buy me a coffee](https://cdn.buymeacoffee.com/buttons/v2/default-red.png)](https://www.buymeacoffee.com/adegard)
 
-# Amazon Price Tracker 
+# Amazon Price Tracker
 
 Android app that wraps Amazon's website with extra features.
+
+## Screenshots
+
+| Main screen | Tracked products |
+|---|---|
+| ![Main screen](docs/screen1.png) | ![Tracked products](docs/screen2.png) |
 
 ## Features
 - Browse Amazon with built-in tracker/ad blocking
@@ -10,7 +16,7 @@ Android app that wraps Amazon's website with extra features.
 - Auto 5% price decrease alert when tracking new products
 - Price comparison bar: current price, list/median price, lowest price in 30 days
 - Push notifications for price alerts
-- Background price checking every hour (WorkManager)
+- Configurable background check frequency (1h - daily, or off)
 - Login support (session/cookies preserved)
 - 10 Amazon regions supported (IT, US, UK, DE, FR, ES, JP, AU, IN, BR)
 - No desktop mode — mobile layout for cleaner extraction
