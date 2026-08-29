@@ -1,3 +1,5 @@
+[![Buy me a coffee](https://cdn.buymeacoffee.com/buttons/v2/default-red.png)](https://www.buymeacoffee.com/adegard)
+
 # Amazon Price Tracker 
 
 Android app that wraps Amazon's website with extra features.
