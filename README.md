@@ -37,3 +37,6 @@ gradle assembleDebug
 - WorkManager for background price checks
 - OkHttp for HTTP requests
 - WebView with JS injection for price extraction
+---
+
+For an overview of all my other projects, see https://adegard.github.io/blog/
