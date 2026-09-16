@@ -736,6 +736,24 @@ class MainActivity : AppCompatActivity() {
         else super.onBackPressed()
     }
 
+    override fun onPause() {
+        webView.onPause()
+        webView.pauseTimers()
+        super.onPause()
+    }
+
+    override fun onStop() {
+        if (isFinishing) return
+        webView.pauseTimers()
+        super.onStop()
+    }
+
+    override fun onResume() {
+        super.onResume()
+        webView.resumeTimers()
+        webView.onResume()
+    }
+
     override fun onDestroy() {
         webView.destroy()
         super.onDestroy()
